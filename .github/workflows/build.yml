@@ -39,6 +39,11 @@ jobs:
       - name: Assemble tree
         working-directory: base
         run: ./unixnu tree --device ../peridot
+      - name: Storage ABI audit
+        run: |
+          tree=$(find base/out -type d -name tree | head -1)
+          echo "tree=$tree"
+          (cd "$tree" && python3 scripts/audit-storage-interface.py)
       - name: Build kernel
         working-directory: base
         run: ./unixnu build kernel --device ../peridot
