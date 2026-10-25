@@ -44,6 +44,15 @@ jobs:
           tree=$(find base/out -type d -name tree | head -1)
           echo "tree=$tree"
           (cd "$tree" && python3 scripts/audit-storage-interface.py)
+      - name: Build kernel (bootstrap pass)
+        working-directory: base
+        continue-on-error: true
+        run: ./unixnu build kernel --device ../peridot
+      - name: Storage ABI audit
+        run: |
+          tree=$(find base/out -type d -name tree | head -1)
+          echo "tree=$tree"
+          (cd "$tree" && python3 scripts/audit-storage-interface.py)
       - name: Build kernel
         working-directory: base
         run: ./unixnu build kernel --device ../peridot
