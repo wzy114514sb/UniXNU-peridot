@@ -43,6 +43,10 @@ jobs:
         working-directory: base
         continue-on-error: true
         run: ./unixnu build kernel --device ../peridot
+      - name: Build kernel prelink
+        working-directory: base
+        continue-on-error: true
+        run: ./unixnu build prelink --device ../peridot
       - name: Storage ABI audit
         run: |
           tree=$(find base/out -type d -name tree | head -1)
