@@ -15,6 +15,7 @@ jobs:
         with:
           repository: UniXNU/UniXNU
           path: base
+          submodules: recursive
       - uses: actions/checkout@v4
         with:
           repository: UniXNU/uefi-sheng
