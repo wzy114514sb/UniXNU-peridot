@@ -1,0 +1,44 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  uefi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: UniXNU/uefi-sheng
+          path: uefi
+          submodules: recursive
+      - name: Firmware volume
+        run: |
+          echo "Mu-Silicium firmware is built separately; see NOTES.md"
+  kernel:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          repository: UniXNU/UniXNU
+          path: unixnu-base
+      - name: Setup
+        run: |
+          python3 --version
+          xcodebuild -version
+      - name: Fetch sources
+        run: ./unixnu fetch
+      - name: Assemble tree
+        run: ./unixnu tree --local unixnu-base
+      - name: Build kernel and package
+        run: ./unixnu build --local unixnu-base
+      - name: Pack boot image
+        run: ./unixnu bootimg --local unixnu-base -o out/peridot-boot.img
+      - uses: actions/upload-artifact@v4
+        with:
+          name: peridot-boot
+          path: out/**/*.img
