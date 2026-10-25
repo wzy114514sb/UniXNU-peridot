@@ -32,7 +32,7 @@ jobs:
         working-directory: base
         run: ./unixnu defconfig peridot_defconfig --device ../peridot
       - name: Authenticate GitHub API calls
-        run: python3 peridot/scripts/ci-patch-api-auth.py base/scripts/prepare-xnu-source.py
+        run: python3 peridot/scripts/ci-patch-base.py base
       - name: Fetch sources
         working-directory: base
         run: ./unixnu fetch --device ../peridot
