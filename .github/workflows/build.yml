@@ -7,6 +7,8 @@ on:
 jobs:
   kernel:
     runs-on: macos-14
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,39 +32,15 @@ jobs:
         working-directory: base
         run: ./unixnu defconfig peridot_defconfig --device ../peridot
       - name: Authenticate GitHub API calls
-        run: |
-          python3 - <<'PY2'
-          from pathlib import Path
-          p = Path('base/scripts/prepare-xnu-source.py')
-          s = p.read_text()
-          inject = """
-_orig_urlopen = urllib.request.urlopen
-def _auth_urlopen(url, *a, **k):
-    if isinstance(url, str) and url.startswith('https://api.github.com'):
-        tok = os.environ.get('GITHUB_TOKEN', '')
-        req = urllib.request.Request(url, headers={'Authorization': f'Bearer {tok}'})
-        return _orig_urlopen(req, *a, **k)
-    return _orig_urlopen(url, *a, **k)
-urllib.request.urlopen = _auth_urlopen
-"""
-          if '_auth_urlopen' not in s:
-              s = s.replace("import urllib.request",
-                            "import urllib.request" + inject, 1)
-              p.write_text(s)
-              print('patched prepare-xnu-source.py')
-          PY2
+        run: python3 peridot/scripts/ci-patch-api-auth.py base/scripts/prepare-xnu-source.py
       - name: Fetch sources
         working-directory: base
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./unixnu fetch --device ../peridot
       - name: Assemble tree
         working-directory: base
         run: ./unixnu tree --device ../peridot
       - name: Build kernel
         working-directory: base
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./unixnu build kernel --device ../peridot
       - name: Build firmware
         working-directory: base
