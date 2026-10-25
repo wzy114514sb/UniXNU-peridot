@@ -5,40 +5,51 @@ on:
   workflow_dispatch:
 
 jobs:
-  uefi:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: UniXNU/uefi-sheng
-          path: uefi
-          submodules: recursive
-      - name: Firmware volume
-        run: |
-          echo "Mu-Silicium firmware is built separately; see NOTES.md"
   kernel:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          path: peridot
       - uses: actions/checkout@v4
         with:
           repository: UniXNU/UniXNU
-          path: unixnu-base
-      - name: Setup
+          path: base
+      - uses: actions/checkout@v4
+        with:
+          repository: UniXNU/uefi-sheng
+          path: uefi
+          submodules: recursive
+      - name: Toolchain
         run: |
           python3 --version
           xcodebuild -version
+      - name: Select configuration
+        working-directory: base
+        run: ./unixnu defconfig peridot_defconfig --device ../peridot
       - name: Fetch sources
-        run: ./unixnu fetch
+        working-directory: base
+        run: ./unixnu fetch --device ../peridot
       - name: Assemble tree
-        run: ./unixnu tree --local unixnu-base
-      - name: Build kernel and package
-        run: ./unixnu build --local unixnu-base
+        working-directory: base
+        run: ./unixnu tree --device ../peridot
+      - name: Build kernel
+        working-directory: base
+        run: ./unixnu build kernel --device ../peridot
+      - name: Build firmware
+        working-directory: base
+        run: ./unixnu build firmware --device ../peridot --uefi ../uefi
+      - name: Build payload
+        working-directory: base
+        run: ./unixnu build payload --device ../peridot
       - name: Pack boot image
-        run: ./unixnu bootimg --local unixnu-base -o out/peridot-boot.img
+        working-directory: base
+        run: ./unixnu bootimg --device ../peridot --uefi ../uefi
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: peridot-boot
-          path: out/**/*.img
+          name: peridot-out
+          path: |
+            base/out/**/*.img
+            base/out/**/*.log
+          if-no-files-found: warn
