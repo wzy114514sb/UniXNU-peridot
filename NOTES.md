@@ -1,31 +1,33 @@
 # UniXNU-peridot — state
 
-Cloned from UniXNU-sheng (template), board.toml partly adapted.
+## Working
+- UEFI (Mu-Silicium peridotPkg + UniXNU menu) boots on the device. Verified.
+- Device repo scaffolding: board/soc/peridot, userdata LBAs, firmware paths,
+  device_tree dts/peridot.dts, splash 0xe3940000/0x2b00000.
+- CI (.github/workflows/build.yml, macos-15): defconfig, fetch, tree,
+  kernel bootstrap pass and `build prelink` all succeed.
 
-## Done
-- board: name=peridot, soc=SM8635, description="Poco F6 / Redmi Turbo 3", kit=peridot
-- userdata: first_lba=2437120, last_lba=128628730, lba_bytes=4096
-  (from TWRP: userdata start 19496960 x512B, size 0x78587FB000 = 126191611 x4096B)
-- firmware: dsc/peridotPkg, fd Build/peridotPkg/{target}_CLANGPDB/FV/SILICIUM_UEFI.fd
-- device_tree: dts/peridot.dts (copied from Mu-Silicium Resources/DTBs)
-- payload: volume=PERIDOTESP, splash_region=0xe3940000 size 0x2b00000 (from dts)
+## Blocked
+`unixnu build kernel` needs artifacts produced by a step we have not found:
+  tree/build/storage-abi/interface-audit.json   (scripts/audit-storage-interface.py)
+  tree/build/xnu-prelink/native-apfs-load-positive.macho
+The audit reads compile records from a previous kernel build, while the
+kernel build needs the audit for the virtio/ram-block archives — a cycle we
+have not resolved. Ordering in the workflow today:
+  bootstrap (continue-on-error) -> prelink -> audit -> kernel
+and the audit still fails on one of the two files above.
 
-## Still sheng-specific (must change before a build can work)
-- "soc_source" = "sm8550"   -> needs an sm8635 soc source (configs/sm8635.config)
-- kernel config_fragments  -> soc:configs/sm8550.config
-- kernel archives/components: ShengUfs, Adreno740, ShengHidInput, ShengNovatekTouch ...
-  peridot needs SM8635 UFS (ufshc@1d84000, same base as sheng family), its touch IC,
-  and its display panel (1220x2712)
-- payload kernel_args: all "sheng-*" prefixes and features
-
-## Facts read from peridot.dts
-- splash_region 0xe3940000 + 0x2b00000 (SimpleFbDxe FB, 1220x2712)
-- ufshc1 = /soc/ufshc@1d84000
-- framebuffer/panel: 1220x2712
+## Facts
+- Runner needs Xcode 16 (mig -mach_msg2); macos-15 works, macos-14 fails.
+- Runner clang rejects the newer -Wno-* flags; scripts/ci-patch-base.py
+  strips them and adds GitHub API auth for prepare-xnu-source.py.
+- Base repo (main) has no NativeUfs; it was vendored here as a submodule.
+- Component names in the current base: ArmDTPlatform, ArmCpu, SoftwareAES,
+  AppleKeyStoreState, Ardeno740, AdrenoMetal, GopFramebuffer, QcomGeniSpi,
+  RamBlock, VirtioMmioBlock, DarwinBoot; kits: XnuPrelink, VerifiedRoot,
+  AirNir, ArmSmmu4K, AdrenoFirmware, AdrenoPM4.
 
 ## Next
-1. Decide the SM8635 UFS path: adapt ShengUfs or use generic NativeUfs.
-2. Add soc configs/sm8635.config (copy sm8550 and adjust).
-3. Push to GitHub, add .github/workflows/build.yml (macos-14) running
-   unixnu fetch / tree / build / bootimg.
-4. First milestone: CI produces boot.img; menu lists an entry.
+Ask the UniXNU group for the exact command order for a new device (the
+docs list defconfig/fetch/tree/build kernel/firmware/payload/bootimg but do
+not mention the audit and prelink artifacts).
